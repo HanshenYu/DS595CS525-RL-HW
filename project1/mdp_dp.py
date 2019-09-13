@@ -51,7 +51,30 @@ def policy_evaluation(P, nS, nA, policy, gamma=0.9, tol=1e-8):
     value_function = np.zeros(nS)
     ############################
     # YOUR IMPLEMENTATION HERE #
-    
+    # initialize value 
+    V = value_function
+    V_next = np.zeros(nS)
+
+    isDone = False
+    while not isDone:
+        # iterate for each of the states
+        for state in range(nS):
+            value_next = 0
+            # update value by adding up all possibilities in the state
+            for action, p_policy in enumerate(policy[state]):
+                for p_trans, nextstate, reward, terminal in P[state][action]:
+                    value_next += p_policy * p_trans * (reward + gamma * V[nextstate])
+            # log the value
+            V_next[state] = value_next
+        # check convergence and update value
+        dist = 0
+        for state in range(nS):
+            # update distance
+            dist = max(abs(V_next[state] - V[state]), dist)
+            # update value function
+            V[state] = V_next[state]
+        isDone = (dist < tol)
+    value_function = V
     ############################
     return value_function
 
@@ -76,7 +99,23 @@ def policy_improvement(P, nS, nA, value_from_policy, gamma=0.9):
     new_policy = np.ones([nS, nA]) / nA
 	############################
 	# YOUR IMPLEMENTATION HERE #
-
+    V = value_from_policy
+    Policy = new_policy
+    for state in range(nS):
+        # get the Q value for each of the state-action
+        Q = np.zeros(nA)
+        for action in range(nA):
+            for p_trans, nextstate, reward, terminal in P[state][action]:
+                    Q[action] += p_trans * (reward + gamma * V[nextstate])
+        #select the best Q and set their value
+        best_q = -1 # any value smaller than 0
+        for action, q_value in enumerate(Q):
+            if q_value > best_q:
+                Policy[state] = np.zeros(nA)
+                Policy[state][action] = 1
+                best_q = q_value
+            # ignore if q_value is not the best
+    new_policy = Policy
 	############################
     return new_policy
 
@@ -102,7 +141,17 @@ def policy_iteration(P, nS, nA, policy, gamma=0.9, tol=1e-8):
     new_policy = policy.copy()
 	############################
 	# YOUR IMPLEMENTATION HERE #
-
+    isDone = False
+    while not isDone:
+        last_policy = new_policy.copy()
+        # evaluate the policy
+        V = policy_evaluation(P, nS, nA, last_policy, gamma=0.9, tol=1e-8)
+        # improve this policy
+        new_policy = policy_improvement(P, nS, nA, V, gamma=0.9)
+        # done if converge
+        isDone = (abs(new_policy - last_policy) < tol).all()
+    # calculate the value again in order to pass the test. but why?
+    V = policy_evaluation(P, nS, nA, new_policy, gamma=0.9, tol=1e-8)   
 	############################
     return new_policy, V
 
@@ -128,7 +177,20 @@ def value_iteration(P, nS, nA, V, gamma=0.9, tol=1e-8):
     V_new = V.copy()
     ############################
     # YOUR IMPLEMENTATION HERE #
-
+    isDone = False
+    while not isDone:
+        V_last = V_new.copy()
+        for state in range(nS):
+            # looks like the BV is exactly the same as searching for a best Q value
+            Q = np.zeros(nA)
+            for action in range(nA):
+                for p_trans, nextstate, reward, terminal in P[state][action]:
+                    Q[action] += p_trans * (reward + gamma * V_last[nextstate])
+            V_new[state] = np.max(Q)
+        # done if converge
+        isDone = (abs(V_new - V_last) < tol).all()
+    # extract optimal policy
+    policy_new = policy_improvement(P, nS, nA, V_new, gamma=0.9)
     ############################
     return policy_new, V_new
 
@@ -159,6 +221,25 @@ def render_single(env, policy, render = False, n_episodes=100):
                 env.render() # render the game
             ############################
             # YOUR IMPLEMENTATION HERE #
+            # choose an action base on state and policy
+            action = np.random.choice(env.nA, p=policy[ob])
+            # choose the next state base on action and possibility
+            possibilities = env.P[ob][action]
+            p_trans = []
+            nextstate = []
+            reward = []
+            terminal = []
+            for i in range(len(possibilities)):
+                p_trans.append(possibilities[i][0])
+                nextstate.append(possibilities[i][1])
+                reward.append(possibilities[i][2])
+                terminal.append(possibilities[i][3])
+            choice = np.random.choice(len(p_trans), p=p_trans)
+            ob = nextstate[choice]
+            # end if terminal
+            done = terminal[choice]
+        # accumulate reward
+        total_rewards += reward[choice]
             
     return total_rewards
 
