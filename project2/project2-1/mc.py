@@ -31,9 +31,9 @@ def initial_policy(observation):
     ############################
     # YOUR IMPLEMENTATION HERE #
     # get parameters from observation
-
+    score = observation[0]
     # action
-
+    action = score < 20
     ############################
     return action 
 
@@ -65,38 +65,44 @@ def mc_prediction(policy, env, n_episodes, gamma = 1.0):
     ############################
     # YOUR IMPLEMENTATION HERE #
     # loop each episode
-
+    for trial in range(n_episodes):
         # initialize the episode
-
+        state = env.reset()
+        states = []
         # generate empty episode list
-
+        episode = []
         # loop until episode generation is done
-
-
+        isDone = False
+        while not isDone:
             # select an action
-
+            action = policy(state)
             # return a reward and new state
-
+            # we use env.step to generate a random card
+            result = env.step(action)
+            next_state = result[0]
+            reward = result[1]
+            isDone = result[2]
             # append state, action, reward to episode
-
+            episode += [[state, action, reward],]
             # update state to new state
-
-            
-            
-
+            state = next_state
         # loop for each step of episode, t = T-1, T-2,...,0
-
+        for index, step in enumerate(episode):
+            state, action, reward = step
             # compute G
-
+            G = 0
+            # G = sum(reward*gamma**i) from step t
+            for i,s in enumerate(episode[index:]):
+                G += s[2]* gamma**i 
             # unless state_t appears in states
-            
+            if state not in states:
+                states += [state]
                 # update return_count
-                
+                returns_count[state] += 1.
                 # update return_sum
-
+                returns_sum[state] += G
                 # calculate average return for this state over all sampled episodes
-
-
+                V[state] = returns_sum[state]/returns_count[state]
 
     ############################
     
@@ -128,10 +134,12 @@ def epsilon_greedy(Q, state, nA, epsilon = 0.1):
     """
     ############################
     # YOUR IMPLEMENTATION HERE #
-
-
-
-
+    # create a uniform profile of possibilities with 1 less action
+    p = list(np.ones(nA) * epsilon / (nA))
+    # select the greedy action and grant it theextra possibility
+    p[np.argmax(Q[state])] += (1.0 - epsilon)
+    # randomly select an action according to the profile
+    action = random.choices(range(nA), weights = p, k = 1)[0]
     ############################
     return action
 
@@ -168,38 +176,46 @@ def mc_control_epsilon_greedy(env, n_episodes, gamma = 1.0, epsilon = 0.1):
     
     ############################
     # YOUR IMPLEMENTATION HERE #
-
+    # loop each episode
+    for trial in range(n_episodes):
         # define decaying epsilon
-
-
-
+        epsilon -= 0.1/n_episodes
         # initialize the episode
-
+        state = env.reset()
+        states = []
         # generate empty episode list
-
-        # loop until one episode generation is done
-
-
+        episode = []
+        # loop until episode generation is done
+        isDone = False
+        while not isDone:
             # get an action from epsilon greedy policy
-
+            action = epsilon_greedy(Q, state, 2, epsilon = epsilon)
             # return a reward and new state
-
+            # we use env.step to generate a random card
+            result = env.step(action)
+            next_state = result[0]
+            reward = result[1]
+            isDone = result[2]
             # append state, action, reward to episode
-
+            episode += [[state, action, reward],]
             # update state to new state
-
-            
-        
-        # loop for each step of episode, t = T-1, T-2, ...,0
-        
+            state = next_state
+        # loop for each step of episode, t = T-1, T-2,...,0
+        for index, step in enumerate(episode):
+            state, action, reward = step
             # compute G
-            
-            # unless the pair state_t, action_t appears in <state action> pair list
-            
+            G = 0
+            # G = sum(reward*gamma**i) from step t
+            for i,s in enumerate(episode[index:]):
+                G += s[2]* gamma**i 
+            # unless state_t appears in states
+            if (state,action) not in states:
+                states += [(state,action)]
                 # update return_count
-                
+                returns_count[(state,action)] += 1.
                 # update return_sum
-
+                returns_sum[(state,action)] += G
                 # calculate average return for this state over all sampled episodes
+                Q[state][action] = returns_sum[(state,action)]/returns_count[(state,action)]
         
     return Q

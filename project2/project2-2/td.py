@@ -40,11 +40,12 @@ def epsilon_greedy(Q, state, nA, epsilon = 0.1):
     """
     ############################
     # YOUR IMPLEMENTATION HERE #
-
-
-
-
-
+    # create a uniform profile of possibilities with 1 less action
+    p = list(np.ones(nA) * epsilon / (nA))
+    # select the greedy action and grant it theextra possibility
+    p[np.argmax(Q[state])] += (1.0 - epsilon)
+    # randomly select an action according to the profile
+    action = random.choices(range(nA), weights = p, k = 1)[0]
     ############################
     return action
 
@@ -79,36 +80,40 @@ def sarsa(env, n_episodes, gamma=1.0, alpha=0.5, epsilon=0.1):
     
     ############################
     # YOUR IMPLEMENTATION HERE #
-    
-    # loop n_episodes
-
+    # loop each episode
+    for trial in range(n_episodes):
         # define decaying epsilon
-
-
+        epsilon *= 0.99
         # initialize the environment 
-
-        
+        state = env.reset()
         # get an action from policy
-
+        action = epsilon_greedy(Q, state, env.nA, epsilon = epsilon)
         # loop for each step of episode
-
-            # return a new state, reward and done
-
+        isDone = False
+        t = 0
+        while not isDone:
+            t += 1
+            # return a reward and new state
+            # we use env.step to generate a random card
+            result = env.step(action)
+            next_state = result[0]
+            reward = result[1]
+            isDone = result[2]
             # get next action
-
-            
+            next_action = epsilon_greedy(Q, next_state, env.nA, epsilon = epsilon)
             # TD update
             # td_target
-
+            # noticing that we need to use the next step for target
+            td_target = reward + gamma * Q[next_state][next_action]
             # td_error
-
+            td_error = td_target - Q[state][action]
             # new Q
-
-            
+            Q[state][action] += alpha * td_error
             # update state
-
+            state = next_state
             # update action
-
+            action = next_action
+        print(trial,t)
     ############################
     return Q
 
@@ -139,26 +144,34 @@ def q_learning(env, n_episodes, gamma=1.0, alpha=0.5, epsilon=0.1):
     
     ############################
     # YOUR IMPLEMENTATION HERE #
-    
-    # loop n_episodes
-
+    # loop each episode
+    for trial in range(n_episodes):
         # initialize the environment 
-
-        
+        state = env.reset()
         # loop for each step of episode
-
+        isDone = False
+        t = 0
+        while not isDone:
+            t += 1
             # get an action from policy
-            
+            action = epsilon_greedy(Q, state, env.nA, epsilon = epsilon)
             # return a new state, reward and done
-            
+            # return a reward and new state
+            # we use env.step to generate a random card
+            result = env.step(action)
+            next_state = result[0]
+            reward = result[1]
+            isDone = result[2]
             # TD update
             # td_target with best Q
-
+            best_action = np.argmax(Q[next_state])
+            td_target = reward + gamma *Q[next_state][best_action]
             # td_error
-
+            td_error = td_target - Q[state][action]
             # new Q
-            
+            Q[state][action] += alpha * td_error
             # update state
-
+            state = next_state
+        print(trial,t)
     ############################
     return Q
